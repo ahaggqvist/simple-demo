@@ -1,0 +1,124 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: simple-demo-app-dep
+  namespace: simple-demo-development
+spec:
+  selector:
+    matchLabels:
+      app: simple-demo-app
+  replicas: 1
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app: simple-demo-app
+    spec:
+      containers:
+        - name: simple-demo-app
+          image: rg.xyz936.xyz/simpledemoapp:d451120
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://*:80"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: TZ
+              value: "Europe/Berlin"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 80
+            initialDelaySeconds: 10
+            timeoutSeconds: 30
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 80
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 15
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+      imagePullSecrets:
+        - name: xyz936-registry-cred
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: simple-demo-app-ing
+  namespace: simple-demo-development
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: simple-demo-app.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: simple-demo-app-svc
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simple-demo-app-svc
+  namespace: simple-demo-development
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: simple-demo-app
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: simple-demo-sa
+  namespace: simple-demo-development
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: simple-demo-rol
+  namespace: simple-demo-development
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: simple-demo-rbn
+  namespace: simple-demo-development
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: simple-demo-rol
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: simple-demo-development

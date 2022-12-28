@@ -1,0 +1,28 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+metadata:
+  name: simple-demo
+build:
+  local:
+    push: true
+    useDockerCLI: false
+    useBuildkit: true
+  artifacts:
+  - image: rg.xyz936.xyz/simpledemoapp
+    context: "src/SimpleDemoApp"
+    platforms:
+      - "linux/amd64"
+    docker:
+      cacheFrom:
+        - rg.xyz936.xyz/simpledemoapp
+  - image: rg.xyz936.xyz/simpledemoapi
+    context: "src/SimpleDemoApi"
+    platforms:
+      - "linux/amd64"
+    docker:
+      cacheFrom:
+        - rg.xyz936.xyz/simpledemoapi
+manifests:
+  rawYaml:
+  - manifests/simple-demo-app/*
+  - manifests/simple-demo-api/*

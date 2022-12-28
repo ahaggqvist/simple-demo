@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <RootNamespace>SimpleDemoApi</RootNamespace>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Folder Include="obj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="6.0.5"/>
+    </ItemGroup>
+
+</Project>
