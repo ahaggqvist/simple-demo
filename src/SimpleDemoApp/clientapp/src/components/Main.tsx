@@ -81,22 +81,22 @@ const Main = () => {
                 pod.color = "yellow";
             }
 
-            if (pod.eventType === "Modified" && state === "ContainerCreating") {
+            if (eventType === "Modified" && state === "ContainerCreating") {
                 pod.color = "yellow";
             }
 
-            if (pod.eventType === "Modified" && state === "Running") {
+            if (eventType === "Modified" && state === "Running") {
                 pod.color = "yellow";
                 setTimeout(() => {
                     pod.color = "green";
                 }, 5000)
             }
 
-            if (pod.eventType === "Deleted") {
+            if (eventType === "Deleted") {
                 setPods(pods => pods?.filter(p => p.id !== id));
             }
         });
-    }, [pods, setPods]);
+    }, [pods]);
 
     useEffect(() => {
         let interval = setInterval(() => {
@@ -130,13 +130,13 @@ const Main = () => {
             <p>{process.env.REACT_APP_ENV}</p>
 
             {
-                [...groupBy(pods, p => p.nodeName)].filter(([name]) => (name != null && name !== "")).map(([name, data], index: number) => {
+                [...groupBy(pods, p => p.nodeName)].filter(([nodeName]) => (nodeName != null && nodeName !== "")).map(([nodeName, pods], index: number) => {
                     return (
                         <div key={index}>
-                            <b>{name}</b>
+                            <b>{nodeName}</b>
                             <div className="flex-container">
                                 {
-                                    data.sort((a, b) => b.id.localeCompare(a.id)).map((pod, index) => {
+                                    pods.sort((a, b) => b.id.localeCompare(a.id)).map((pod, index) => {
                                         return (
                                             <div title={pod.name} key={index} style={{
                                                 backgroundColor: pod.color
