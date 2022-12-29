@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: simple-demo-api
-          image: rg.xyz936.xyz/simpledemoapi:51ff4fe
+          image: rg.xyz936.xyz/simpledemoapi:3a3e1a0
           env:
             - name: ASPNETCORE_URLS
               value: "http://*:80"

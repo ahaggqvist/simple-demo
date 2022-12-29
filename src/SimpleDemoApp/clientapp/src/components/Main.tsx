@@ -15,9 +15,9 @@ interface IPod {
 
 const Main = () => {
     const didUnmount = useRef(false);
-    const [time, setTime] = useState("Fetching ...");
-    const [podUpdates, setPodUpdates] = useState<IPod[]>([]);
-    const [pods, setPods] = useState<IPod[]>([]);
+    const [namespacedPods, setNamespacedPods] = useState<IPod[]>([]);
+    const [watchedPods, setWatchedPods] = useState<IPod[]>([]);
+    const [nodePods, setNodePods] = useState<IPod[]>([]);
     const {
         lastMessage,
         readyState
@@ -48,29 +48,29 @@ const Main = () => {
         }, new Map<K, V[]>())
     }
 
-    const fetchTime = useCallback(async () => {
+    const fetchNamespacedPods = useCallback(async () => {
         try {
-            return await axios.get<string>(`${process.env.REACT_APP_API_URL}time`);
+            const nodePod = nodePods.sort((a, b) => a.resourceVersion > b.resourceVersion ? 1 : -1).at(-1);
+            let resourceVersion = nodePod?.resourceVersion ?? "";
+            return await axios.get<IPod[]>(`${process.env.REACT_APP_API_URL}pods?resourceVersion=${resourceVersion}`);
         } catch (error) {
             console.log(`Connection error  ${JSON.stringify(error)}`)
         }
     }, []);
 
-    const updatePodList = useCallback((podUpdate: IPod) => {
-        const {id} = podUpdate;
+    const updateNodePods = useCallback((watchedPod: IPod) => {
+        const {id} = watchedPod;
 
-        if (!pods?.some((p) => p.id === id)) {
-            pods?.push(podUpdate);
-
-            console.log(`Add pod to pods: ${JSON.stringify(podUpdate)}`);
+        if (!nodePods?.some((p) => p.id === id)) {
+            nodePods?.push(watchedPod);
         } else {
-            const idx = pods.findIndex(p => p.id === id);
+            const idx = nodePods.findIndex(p => p.id === id);
             if (idx !== -1) {
-                pods[idx] = {...podUpdate};
+                nodePods[idx] = {...watchedPod};
             }
         }
 
-        pods?.forEach((pod) => {
+        nodePods?.forEach((pod) => {
             const {id, eventType, state} = pod;
 
             if (eventType === "Added") {
@@ -78,11 +78,11 @@ const Main = () => {
             }
 
             if (eventType === "Modified" && state === "Pending") {
-                pod.color = "yellow";
+                pod.color = "orange";
             }
 
             if (eventType === "Modified" && state === "ContainerCreating") {
-                pod.color = "yellow";
+                pod.color = "blue";
             }
 
             if (eventType === "Modified" && state === "Running") {
@@ -93,18 +93,18 @@ const Main = () => {
             }
 
             if (eventType === "Deleted") {
-                setPods(pods => pods?.filter(p => p.id !== id));
+                setNodePods(pods => pods?.filter(p => p.id !== id));
             }
         });
-    }, [pods]);
+    }, [nodePods]);
 
     useEffect(() => {
         let interval = setInterval(() => {
             (async () => {
-                const response = await fetchTime();
+                const response = await fetchNamespacedPods();
                 if (response?.status === 200) {
                     if (response.data.length > 0) {
-                        setTime(response.data);
+                        setNamespacedPods(response.data);
                     }
                 }
             })();
@@ -112,25 +112,48 @@ const Main = () => {
         return () => {
             clearInterval(interval);
         };
-    }, [fetchTime]);
+    }, [fetchNamespacedPods]);
 
     useEffect(() => {
-        console.log(`Connection ${connectionStatus}`);
-
         if (lastMessage !== null) {
-            const podUpdate: IPod = JSON.parse(lastMessage.data);
-            setPodUpdates(podUpdates => podUpdates?.concat(podUpdate));
-            updatePodList(podUpdate);
+            const watchedPod: IPod = JSON.parse(lastMessage.data);
+            setWatchedPods(watchedPods => watchedPods?.concat(watchedPod));
+            updateNodePods(watchedPod);
         }
     }, [lastMessage])
 
     return (
         <>
-            <h1>{time}</h1>
-            <p>{process.env.REACT_APP_ENV}</p>
+            <h1>Pods</h1>
 
+            <table className="table">
+                <thead style={{textAlign: "left"}}>
+                <tr>
+                    <th>Time</th>
+                    <th>Name</th>
+                    <th>Node</th>
+                    <th>ResourceVersion</th>
+                </tr>
+                </thead>
+                <tbody>
+                {namespacedPods?.sort((a, b) => b.id.localeCompare(a.id)).map((namespacedPod, index) => {
+                    return (
+                        <tr key={index}>
+                            <td>{namespacedPod.loggedAt}</td>
+                            <td>{namespacedPod.name}</td>
+                            <td>{namespacedPod.nodeName}</td>
+                            <td>{namespacedPod.resourceVersion}</td>
+                        </tr>
+                    )
+                })}
+                </tbody>
+            </table>
+
+            <p>Environment: {process.env.REACT_APP_ENV}</p>
+
+            <h1>Nodes</h1>
             {
-                [...groupBy(pods, p => p.nodeName)].filter(([nodeName]) => (nodeName != null && nodeName !== "")).map(([nodeName, pods], index: number) => {
+                [...groupBy(nodePods, p => p.nodeName)].filter(([nodeName]) => (nodeName != null && nodeName !== "")).map(([nodeName, pods], index: number) => {
                     return (
                         <div key={index}>
                             <b>{nodeName}</b>
@@ -150,6 +173,8 @@ const Main = () => {
                 })
             }
 
+            <h1>History</h1>
+
             <table className="table">
                 <thead style={{textAlign: "left"}}>
                 <tr>
@@ -162,15 +187,15 @@ const Main = () => {
                 </tr>
                 </thead>
                 <tbody>
-                {podUpdates?.map((podUpdate, index) => {
+                {watchedPods?.map((watchedPod, index) => {
                     return (
                         <tr key={index}>
-                            <td>{podUpdate.loggedAt}</td>
-                            <td>{podUpdate.name}</td>
-                            <td>{podUpdate.nodeName}</td>
-                            <td>{podUpdate.state}</td>
-                            <td>{podUpdate.eventType}</td>
-                            <td>{podUpdate.resourceVersion}</td>
+                            <td>{watchedPod.loggedAt}</td>
+                            <td>{watchedPod.name}</td>
+                            <td>{watchedPod.nodeName}</td>
+                            <td>{watchedPod.state}</td>
+                            <td>{watchedPod.eventType}</td>
+                            <td>{watchedPod.resourceVersion}</td>
                         </tr>
                     )
                 })}

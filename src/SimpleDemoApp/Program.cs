@@ -10,12 +10,12 @@ builder.Services.AddCors(options =>
 });
 builder.Services.AddHealthChecks();
 
-var timeApiUrl = builder.Configuration.GetValue<string>("AppSettings:TimeApiUrl");
+var podsApiUrl = builder.Configuration.GetValue<string>("AppSettings:PodsApiUrl");
 var k8SNamespace = builder.Configuration.GetValue<string>("AppSettings:K8sNamespace");
 var app = builder.Build();
 
-app.MapGet("/api/v1/time",
-    async (HttpClient httpClient) => await httpClient.GetStringAsync(timeApiUrl));
+app.MapGet("/api/v1/pods",
+    async (HttpClient httpClient) => await httpClient.GetStringAsync(podsApiUrl));
 
 app.UseHealthChecks("/health/readiness", new HealthCheckOptions
 {
@@ -43,8 +43,8 @@ app.Map("/api/v1/ws", async context =>
 
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         using var client = new Kubernetes(kubernetesClientConfiguration);
-        var podWatchResponse = client.CoreV1.ListNamespacedPodWithHttpMessagesAsync(k8SNamespace, watch: true, timeoutSeconds: 7200);
-        await foreach (var (eventType, item) in podWatchResponse.WatchAsync<V1Pod, V1PodList>())
+        var listNamespacedPodWithHttpMessages = client.CoreV1.ListNamespacedPodWithHttpMessagesAsync(k8SNamespace, watch: true, timeoutSeconds: 7200);
+        await foreach (var (eventType, item) in listNamespacedPodWithHttpMessages.WatchAsync<V1Pod, V1PodList>())
         {
             var state = string.Empty;
             var containerStatuses = item.Status.ContainerStatuses;

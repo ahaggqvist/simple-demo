@@ -1,8 +1,8 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:7.0-alpine AS base
+﻿FROM rg.xyz936.xyz/dotnet/aspnet:7.0-alpine AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM rg.xyz936.xyz/dotnet/sdk:7.0 AS build
 WORKDIR /src
 COPY . .
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
